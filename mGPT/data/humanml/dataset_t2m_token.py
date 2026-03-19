@@ -57,11 +57,19 @@ class Text2MotionDatasetToken(data.Dataset):
             self.csv['DURATION'] = self.csv['END_REALIGNED'] - self.csv['START_REALIGNED']
             self.csv = self.csv[self.csv['DURATION']<30].reset_index(drop=True) # remove sequences longer than 30 seconds
             self.ids = self.csv['SENTENCE_NAME'] #[:100]
+            available_pose_dirs = {
+                name for name in os.listdir(self.data_dir)
+                if os.path.isdir(os.path.join(self.data_dir, name))
+            }
+            missing_pose_ids = set(self.ids) - available_pose_dirs
+            ignored_how2sign_ids = set(bad_how2sign_ids) | missing_pose_ids
 
             print(f'{split}--loading how2sign annotations...', len(self.ids))
+            if missing_pose_ids:
+                print(f'{split}--skipping how2sign samples missing pose dirs...', len(missing_pose_ids))
             for idx in tqdm(range(len(self.ids))):
                 name = self.ids[idx]
-                if name in bad_how2sign_ids:
+                if name in ignored_how2sign_ids:
                     continue
                 self.all_data.append({'name': name, 'fps': self.csv[self.csv['SENTENCE_NAME']==name]['fps'].item(), 
                                         'text': self.csv[self.csv['SENTENCE_NAME']==name]['SENTENCE'].item(), 'src': 'how2sign'})
